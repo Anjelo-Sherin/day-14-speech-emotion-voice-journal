@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VocalMood | Speech Emotion Recognition & Voice Journal</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Chart.js for radar and trend charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="brand">
+        <div class="brand-icon">🎙️</div>
+        <div class="brand-text">
+          <h1>VocalMood AI</h1>
+          <p>Speech Emotion Recognition & Multimodal Voice Journal (Day 14)</p>
+        </div>
+      </div>
+      <div style="display: flex; gap: 0.75rem; align-items: center;">
+        <span class="badge badge-calm" id="system-status">● Model Ready</span>
+        <button class="btn-secondary" onclick="exportData('json')">Export JSON</button>
+      </div>
+    </header>
+
+    <!-- Responsible AI / Wellness Disclaimer Banner -->
+    <div class="disclaimer-banner">
+      <span style="font-size: 1.25rem;">🌿</span>
+      <div>
+        <strong>Personal Wellness Aid:</strong> VocalMood is designed for self-reflection and personal mood tracking. It is <em>not</em> a clinical diagnostic device. If you are experiencing acute distress or crisis, please connect with a licensed healthcare professional or your local helpline.
+      </div>
+    </div>
+
+    <!-- Main Grid: Recording on Left, Real-Time Analysis on Right -->
+    <div class="main-grid">
+      <!-- Left Column: Audio Capture & Input -->
+      <div class="glass-card record-box">
+        <h2 style="font-size: 1.2rem; margin-bottom: 0.5rem;">Voice Check-In</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+          Speak for 15-60 seconds about your day. Tone and word sentiment will be analyzed in real time.
+        </p>
+
+        <!-- Record Button -->
+        <button id="micBtn" class="mic-btn" title="Click to Start Recording">
+          <span id="micIcon">🎙️</span>
+        </button>
+        <div id="recordingTimer" class="timer">00:00</div>
+        <p id="recordStatus" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+          Click to start voice recording
+        </p>
+
+        <!-- Live Waveform Canvas -->
+        <canvas id="visualizer"></canvas>
+
+        <!-- Live Transcript Preview -->
+        <div style="width: 100%; margin-top: 1.25rem; text-align: left;">
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">
+            Live Speech Transcript (Browser / STT)
+          </label>
+          <textarea id="transcriptInput" rows="3" placeholder="Speak into mic or type your transcript..." style="width: 100%; margin-top: 0.4rem; padding: 0.6rem; border-radius: 8px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); color: var(--text-main); font-family: inherit; font-size: 0.9rem; resize: vertical;"></textarea>
+        </div>
+
+        <!-- File Upload Alternative -->
+        <div style="width: 100%; margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem; text-align: left;">
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">
+            Or Upload Audio File (.wav, .mp3, .webm)
+          </label>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.4rem;">
+            <input type="file" id="audioFileInput" accept="audio/*" style="font-size: 0.85rem; color: var(--text-muted); flex: 1;">
+            <button class="btn-primary" id="uploadBtn" onclick="handleFileUpload()">Analyze File</button>
+          </div>
+        </div>
+
+        <!-- One-Click Preset Test Samples -->
+        <div class="presets-container">
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; display: block; text-align: left;">
+            ⚡ Quick Test Presets (Instant Demo)
+          </label>
+          <div class="preset-pills" id="presetPillsContainer">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Multimodal Analysis & Mismatch Detection -->
+      <div class="glass-card" id="analysisCard">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 style="font-size: 1.2rem;">Multimodal Affective Analysis</h2>
+          <span id="fusedMoodBadge" class="badge badge-calm">Awaiting Voice Input</span>
+        </div>
+
+        <!-- Audio Player for Analyzed Clip -->
+        <div id="playerContainer" style="display: none; margin-bottom: 1rem;">
+          <audio id="audioPlayback" controls></audio>
+        </div>
+
+        <!-- Congruence Meter -->
+        <div style="margin-bottom: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.35rem;">
+            <span>Verbal vs. Vocal Congruence</span>
+            <strong id="congruenceValue">--%</strong>
+          </div>
+          <div style="width: 100%; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden;">
+            <div id="congruenceBar" style="width: 0%; height: 100%; background: var(--accent-success); transition: width 0.6s ease;"></div>
+          </div>
+        </div>
+
+        <!-- Mismatch Alert Banner -->
+        <div id="mismatchBox" class="mismatch-alert" style="display: none;">
+          <div class="mismatch-icon" id="mismatchIcon">⚠️</div>
+          <div>
+            <h4 id="mismatchTitle" style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.2rem;">Tone & Transcript Mismatch</h4>
+            <p id="mismatchDesc" style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.4;"></p>
+          </div>
+        </div>
+
+        <!-- Dual Column Breakdown: Radar Chart & Metrics -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.25rem; align-items: center;">
+          <div style="height: 220px; position: relative;">
+            <canvas id="emotionRadarChart"></canvas>
+          </div>
+          <div style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.6rem;">
+            <div style="background: rgba(15,23,42,0.5); padding: 0.6rem; border-radius: 6px;">
+              <div style="color: var(--text-muted); font-size: 0.75rem;">Acoustic Vocal Tone</div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.2rem;">
+                <strong id="acousticToneLabel" style="text-transform: capitalize;">--</strong>
+                <span id="acousticToneConf" class="badge badge-neutral">--%</span>
+              </div>
+            </div>
+
+            <div style="background: rgba(15,23,42,0.5); padding: 0.6rem; border-radius: 6px;">
+              <div style="color: var(--text-muted); font-size: 0.75rem;">Verbal Sentiment (Words)</div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.2rem;">
+                <strong id="textSentimentLabel" style="text-transform: capitalize;">--</strong>
+                <span id="textSentimentScore" class="badge badge-neutral">Score: 0.0</span>
+              </div>
+            </div>
+
+            <div style="background: rgba(15,23,42,0.5); padding: 0.6rem; border-radius: 6px;">
+              <div style="color: var(--text-muted); font-size: 0.75rem;">Physiological Arousal & Valence</div>
+              <div style="display: flex; justify-content: space-between; margin-top: 0.2rem;">
+                <span>Arousal: <strong id="arousalVal">--</strong></span>
+                <span>Valence: <strong id="valenceVal">--</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reflective Wellness Summary -->
+        <div style="margin-top: 1.25rem; background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 0.75rem; padding: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;">
+            <span style="font-size: 1.1rem;">💡</span>
+            <strong style="font-size: 0.9rem; color: #c4b5fd;">Reflective Journal Insight</strong>
+          </div>
+          <p id="reflectiveSummaryText" style="font-size: 0.86rem; color: #e2e8f0; line-height: 1.45;">
+            Record or choose a preset sample above to see your empathetic journal summary and personalized reflection.
+          </p>
+          <div id="actionTipBox" style="margin-top: 0.6rem; font-size: 0.8rem; color: #a7f3d0; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 0.5rem;">
+            <strong>Suggested Mindful Micro-Habit:</strong> <span id="actionTipText">Notice your breathing rhythm.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analytics Dashboard: Weekly Trends & Calendar Heatmap -->
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.75rem; margin-bottom: 2rem;">
+      <!-- Weekly Mood Trend Chart -->
+      <div class="glass-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 style="font-size: 1.1rem;">14-Day Affective Trajectory</h3>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Valence & Vocal Arousal</span>
+        </div>
+        <div style="height: 240px; position: relative;">
+          <canvas id="weeklyTrendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- 30-Day Calendar Heatmap -->
+      <div class="glass-card">
+        <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Mood Calendar</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
+          Daily check-in intensity and detected mismatches
+        </p>
+        <div class="heatmap-container">
+          <div class="heatmap-grid" id="calendarHeatmapGrid">
+            <!-- Heatmap tiles dynamically injected -->
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.75rem; align-items: center; font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem;">
+          <span>Low</span>
+          <span style="display: inline-block; width: 10px; height: 10px; background: rgba(59, 130, 246, 0.3); border-radius: 2px;"></span>
+          <span style="display: inline-block; width: 10px; height: 10px; background: rgba(16, 185, 129, 0.4); border-radius: 2px;"></span>
+          <span style="display: inline-block; width: 10px; height: 10px; background: rgba(16, 185, 129, 0.95); border-radius: 2px;"></span>
+          <span>High Joy</span>
+          <span style="margin-left: auto; border: 1px solid #ef4444; width: 10px; height: 10px; border-radius: 2px;"></span>
+          <span>Mismatch</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Journal History Feed -->
+    <div class="glass-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-size: 1.15rem;">Recent Voice Journal Entries</h3>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn-secondary" id="filterAllBtn" onclick="setHistoryFilter(false)">All Entries</button>
+          <button class="btn-secondary" id="filterMismatchBtn" onclick="setHistoryFilter(true)">Mismatches Only</button>
+        </div>
+      </div>
+      <div id="historyFeed">
+        <!-- Dynamically injected journal entries -->
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
