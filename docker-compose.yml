@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  vocalmood:
+    build: .
+    container_name: vocalmood_voice_journal
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=True
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    restart: unless-stopped

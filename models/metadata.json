@@ -1,0 +1,17 @@
+{
+  "architecture": "CNN-LSTM with Temporal Attention",
+  "classes": [
+    "neutral",
+    "calm",
+    "happy",
+    "sad",
+    "angry",
+    "fearful",
+    "disgust",
+    "surprised"
+  ],
+  "sample_rate": 16000,
+  "n_mfcc": 40,
+  "target_frames": 128,
+  "benchmark_dataset": "RAVDESS"
+}
