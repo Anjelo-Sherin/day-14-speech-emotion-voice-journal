@@ -23,6 +23,12 @@ document.addEventListener('DOMContentLoaded', () => {
   loadHistoryEntries();
 
   document.getElementById('micBtn').addEventListener('click', toggleRecording);
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const sampleParam = urlParams.get('sample');
+  if (sampleParam) {
+    setTimeout(() => runPresetSample(sampleParam), 600);
+  }
 });
 
 // ----------------------------------------------------
